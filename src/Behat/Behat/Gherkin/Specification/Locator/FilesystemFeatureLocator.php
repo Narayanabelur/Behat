@@ -15,6 +15,7 @@ use Behat\Gherkin\Filter\PathsFilter;
 use Behat\Gherkin\Gherkin;
 use Behat\Testwork\Specification\Locator\SpecificationLocator;
 use Behat\Testwork\Specification\NoSpecificationsIterator;
+use Behat\Testwork\Specification\SpecificationPercolator;
 use Behat\Testwork\Suite\Exception\SuiteConfigurationException;
 use Behat\Testwork\Suite\Suite;
 use RecursiveDirectoryIterator;
@@ -36,6 +37,10 @@ final class FilesystemFeatureLocator implements SpecificationLocator
      * @var string
      */
     private $basePath;
+    /**
+     * @var SpecificationPercolator
+     */
+    private $percolator;
 
     /**
      * Initializes loader.
@@ -43,10 +48,11 @@ final class FilesystemFeatureLocator implements SpecificationLocator
      * @param Gherkin $gherkin
      * @param string  $basePath
      */
-    public function __construct(Gherkin $gherkin, $basePath)
+    public function __construct(Gherkin $gherkin, $basePath, SpecificationPercolator $percolator)
     {
         $this->gherkin = $gherkin;
         $this->basePath = $basePath;
+        $this->percolator = $percolator;
     }
 
     /**
@@ -77,7 +83,7 @@ final class FilesystemFeatureLocator implements SpecificationLocator
         if ($locator) {
             $filters = array(new PathsFilter($suiteLocators));
 
-            return new LazyFeatureIterator($suite, $this->gherkin, $this->findFeatureFiles($locator), $filters);
+            return new LazyFeatureIterator($suite, $this->gherkin, $this->percolator, $this->findFeatureFiles($locator), $filters);
         }
 
         $featurePaths = array();

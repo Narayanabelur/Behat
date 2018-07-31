@@ -18,6 +18,7 @@ use Behat\Gherkin\Filter\TagFilter;
 use Behat\Gherkin\Gherkin;
 use Behat\Gherkin\Node\FeatureNode;
 use Behat\Testwork\Specification\SpecificationIterator;
+use Behat\Testwork\Specification\SpecificationPercolator;
 use Behat\Testwork\Suite\Exception\SuiteConfigurationException;
 use Behat\Testwork\Suite\Suite;
 
@@ -36,6 +37,10 @@ final class LazyFeatureIterator implements SpecificationIterator
      * @var Gherkin
      */
     private $gherkin;
+    /**
+     * @var SpecificationPercolator
+     */
+    private $percolator;
     /**
      * @var string[]
      */
@@ -65,10 +70,11 @@ final class LazyFeatureIterator implements SpecificationIterator
      * @param string[]          $paths
      * @param FilterInterface[] $filters
      */
-    public function __construct(Suite $suite, Gherkin $gherkin, array $paths, array $filters = array())
+    public function __construct(Suite $suite, Gherkin $gherkin, SpecificationPercolator $percolator, array $paths, array $filters = array())
     {
         $this->suite = $suite;
         $this->gherkin = $gherkin;
+        $this->percolator = $percolator;
         $this->paths = array_values($paths);
         $this->filters = array_merge($this->getSuiteFilters($suite), $filters);
     }
@@ -156,28 +162,16 @@ final class LazyFeatureIterator implements SpecificationIterator
      */
     private function createFilter($type, $filterString, Suite $suite)
     {
-        if ('role' === $type) {
-            return new RoleFilter($filterString);
+        try {
+            return $this->percolator->getFilter($type, $filterString);
+        } catch (\Exception $e) {
+            throw new SuiteConfigurationException(sprintf(
+                '`%s` filter is not supported by the `%s` suite. Supported types are `%s`.',
+                $type,
+                $suite->getName(),
+                implode('`, `', array('role', 'name', 'tags'))
+            ), $suite->getName());
         }
-
-        if ('name' === $type) {
-            return new NameFilter($filterString);
-        }
-
-        if ('tags' === $type) {
-            return new TagFilter($filterString);
-        }
-
-        if ('narrative' === $type) {
-            return new NarrativeFilter($filterString);
-        }
-
-        throw new SuiteConfigurationException(sprintf(
-            '`%s` filter is not supported by the `%s` suite. Supported types are `%s`.',
-            $type,
-            $suite->getName(),
-            implode('`, `', array('role', 'name', 'tags'))
-        ), $suite->getName());
     }
 
     /**

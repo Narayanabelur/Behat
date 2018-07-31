@@ -29,10 +29,14 @@ final class SpecificationExtension implements Extension
      */
     const FINDER_ID = 'specifications.finder';
 
+    const PERCOLATOR_ID = 'specifications.percolator';
+    
     /*
      * Available extension points
      */
     const LOCATOR_TAG = 'specifications.locator';
+
+    const FILTER_TAG = 'specifications.filter';
 
     /**
      * @var ServiceProcessor
@@ -77,6 +81,11 @@ final class SpecificationExtension implements Extension
     public function load(ContainerBuilder $container, array $config)
     {
         $this->loadFinder($container);
+        $this->loadPercolator($container);
+        $this->loadNarrativeFilter($container);
+        $this->loadRoleFilter($container);
+        $this->loadScenarioNameFilter($container);
+        $this->loadTagFilter($container);
     }
 
     /**
@@ -85,6 +94,7 @@ final class SpecificationExtension implements Extension
     public function process(ContainerBuilder $container)
     {
         $this->processLocators($container);
+        $this->processFilters($container);
     }
 
     /**
@@ -96,6 +106,40 @@ final class SpecificationExtension implements Extension
     {
         $definition = new Definition('Behat\Testwork\Specification\SpecificationFinder');
         $container->setDefinition(self::FINDER_ID, $definition);
+    }
+
+    private function loadPercolator(ContainerBuilder $container)
+    {
+        $definition = new Definition('Behat\Testwork\Specification\SpecificationPercolator');
+        $container->setDefinition(self::PERCOLATOR_ID, $definition);
+    }
+
+    private function loadNarrativeFilter(ContainerBuilder $container)
+    {
+        $definition = new Definition('Behat\Testwork\Specification\Filter\NarrativeFilter');
+        $definition->addTag(self::FILTER_TAG, array('priority' => 50));
+        $container->setDefinition(self::FILTER_TAG . '.narrative', $definition);
+    }
+
+    private function loadRoleFilter(ContainerBuilder $container)
+    {
+        $definition = new Definition('Behat\Testwork\Specification\Filter\RoleFilter');
+        $definition->addTag(self::FILTER_TAG, array('priority' => 50));
+        $container->setDefinition(self::FILTER_TAG . '.role', $definition);
+    }
+
+    private function loadScenarioNameFilter(ContainerBuilder $container)
+    {
+        $definition = new Definition('Behat\Testwork\Specification\Filter\ScenarioNameFilter');
+        $definition->addTag(self::FILTER_TAG, array('priority' => 50));
+        $container->setDefinition(self::FILTER_TAG . '.scenario-name', $definition);
+    }
+
+    private function loadTagFilter(ContainerBuilder $container)
+    {
+        $definition = new Definition('Behat\Testwork\Specification\Filter\TagFilter');
+        $definition->addTag(self::FILTER_TAG, array('priority' => 50));
+        $container->setDefinition(self::FILTER_TAG . '.tag', $definition);
     }
 
     /**
@@ -110,6 +154,15 @@ final class SpecificationExtension implements Extension
 
         foreach ($references as $reference) {
             $definition->addMethodCall('registerSpecificationLocator', array($reference));
+        }
+    }
+
+    private function processFilters(ContainerBuilder $container) {
+        $references = $this->processor->findAndSortTaggedServices($container, self::FILTER_TAG);
+        $definition = $container->getDefinition(self::PERCOLATOR_ID);
+
+        foreach ($references as $reference) {
+            $definition->addMethodCall('registerSpecificationFilterProvider', array($reference));
         }
     }
 }

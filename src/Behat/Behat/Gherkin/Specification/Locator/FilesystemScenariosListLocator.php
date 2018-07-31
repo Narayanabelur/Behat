@@ -14,6 +14,7 @@ use Behat\Behat\Gherkin\Specification\LazyFeatureIterator;
 use Behat\Gherkin\Gherkin;
 use Behat\Testwork\Specification\Locator\SpecificationLocator;
 use Behat\Testwork\Specification\NoSpecificationsIterator;
+use Behat\Testwork\Specification\SpecificationPercolator;
 use Behat\Testwork\Suite\Suite;
 
 /**
@@ -29,13 +30,19 @@ final class FilesystemScenariosListLocator implements SpecificationLocator
     private $gherkin;
 
     /**
+     * @var SpecificationPercolator
+     */
+    private $percolator;
+
+    /**
      * Initializes locator.
      *
      * @param Gherkin $gherkin
      */
-    public function __construct(Gherkin $gherkin)
+    public function __construct(Gherkin $gherkin, SpecificationPercolator $percolator)
     {
         $this->gherkin = $gherkin;
+        $this->percolator = $percolator;
     }
 
     /**
@@ -57,6 +64,6 @@ final class FilesystemScenariosListLocator implements SpecificationLocator
 
         $scenarios = explode("\n", trim(file_get_contents($locator)));
 
-        return new LazyFeatureIterator($suite, $this->gherkin, $scenarios);
+        return new LazyFeatureIterator($suite, $this->gherkin, $this->percolator, $scenarios);
     }
 }

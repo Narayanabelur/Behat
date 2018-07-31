@@ -154,15 +154,27 @@ final class RerunController implements Controller
      */
     private function generateKey(InputInterface $input)
     {
+
         return md5(
             $input->getParameterOption(array('--profile', '-p')) .
             $input->getOption('suite') .
-            implode(' ', $input->getOption('name')) .
-            implode(' ', $input->getOption('tags')) .
-            $input->getOption('role') .
+            $this->concatenateFitersForKey($input) .
             $input->getArgument('paths') .
             $this->basepath
         );
+    }
+
+    private function concatenateFitersForKey(InputInterface $input) {
+        $string = '';
+        foreach ($input->getOptions() as $option => $data) {
+            if (strpos($option, 'filter-') === 0) {
+                if (is_array($data)) {
+                    $string .= implode(' ', $data);
+                } else {
+                    $string .= $data;
+                }
+            }
+        }
     }
 
     /**

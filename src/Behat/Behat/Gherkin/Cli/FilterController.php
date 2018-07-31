@@ -15,6 +15,7 @@ use Behat\Gherkin\Filter\RoleFilter;
 use Behat\Gherkin\Filter\TagFilter;
 use Behat\Gherkin\Gherkin;
 use Behat\Testwork\Cli\Controller;
+use Behat\Testwork\Specification\SpecificationPercolator;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -33,13 +34,19 @@ final class FilterController implements Controller
     private $gherkin;
 
     /**
+     * @var SpecificationPercolator
+     */
+    private $percolator;
+
+    /**
      * Initializes controller.
      *
      * @param Gherkin $gherkin
      */
-    public function __construct(Gherkin $gherkin)
+    public function __construct(Gherkin $gherkin, SpecificationPercolator $percolator)
     {
         $this->gherkin = $gherkin;
+        $this->percolator = $percolator;
     }
 
     /**
@@ -49,22 +56,12 @@ final class FilterController implements Controller
      */
     public function configure(Command $command)
     {
-        $command
-            ->addOption(
-                '--name', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY,
-                "Only executeCall the feature elements which match part" . PHP_EOL .
-                "of the given name or regex."
-            )
-            ->addOption(
-                '--tags', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY,
-                "Only executeCall the features or scenarios with tags" . PHP_EOL .
-                "matching tag filter expression."
-            )
-            ->addOption(
-                '--role', null, InputOption::VALUE_REQUIRED,
-                "Only executeCall the features with actor role matching" . PHP_EOL .
-                "a wildcard."
-            );
+        foreach ($this->percolator->getFilters() as $filter) {
+            $options = array_merge(array('--filter-' . $filter::getName(), null) , $filter->getCommandOptions());
+            if (count($options) !== 2) {
+                call_user_func_array(array($command, 'addOption'), $options);
+            }
+        }
     }
 
     /**
@@ -78,21 +75,26 @@ final class FilterController implements Controller
     public function execute(InputInterface $input, OutputInterface $output)
     {
         $filters = array();
-
-        foreach ($input->getOption('name') as $name) {
-            $filters[] = new NameFilter($name);
-        }
-
-        foreach ($input->getOption('tags') as $tags) {
-            $filters[] = new TagFilter($tags);
-        }
-
-        if ($role = $input->getOption('role')) {
-            $filters[] = new RoleFilter($role);
+        foreach ($input->getOptions() as $option => $data) {
+            if (strpos($option, 'filter-') === 0 && ($data === null || is_array($data) && count($data) > 0)) {
+                if ($data === null || is_array($data) && count($data) > 0)
+                $filterName = substr($option, 7);
+                $filter[] = $this->percolator->getFilter($filterName, $data);
+            }
         }
 
         if (count($filters)) {
             $this->gherkin->setFilters($filters);
+        }
+    }
+
+    private function optionDataIsEmpty($data) {
+        if ($data === null) {
+            return true;
+        } else if (is_array($data) && count($data) === 0) {
+            return true;
+        } else {
+            return false;
         }
     }
 }
